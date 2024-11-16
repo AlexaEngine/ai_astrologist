@@ -28,6 +28,7 @@ makefile
 Copy code
 OPENAI_API_KEY=<Your OpenAI API Key>
 TELEGRAM_BOT_TOKEN=<Your Telegram Bot Token>
+MONGO_URI=<Your MongoDB cluster key>
 Install dependencies:
 bash
 Copy code
