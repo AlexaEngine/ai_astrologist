@@ -57,9 +57,9 @@ async function generateResponse(prompt, userData, language) {
   try {
     const systemPrompt =
       language === "RU"
-        ? "Ты профессиональный астролог и психолог с более чем 50-летним опытом. Ты предоставляешь подробные астрологические прогнозы и психологические советы для решения жизненных проблем."
-        : "You are a professional astrologer and psychologist with over 50 years of experience. Provide detailed astrological insights and psychological advice to help users navigate life challenges.";
-    // Add user's saved details to the context
+        ? "Ты профессиональный астролог и психолог с более чем 50-летним опытом. Ты предоставляешь подробные астрологические прогнозы и психологические советы для решения жизненных проблем. Отвечай только на русском языке."
+        : "You are a professional astrologer and psychologist with over 50 years of experience. Provide detailed astrological insights and psychological advice to help users navigate life challenges. Respond only in English.";
+
     const context = userData
       ? `The user is named ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
           userData.birthtime
@@ -68,7 +68,7 @@ async function generateResponse(prompt, userData, language) {
         }`
       : "No user details are available.";
 
-      const fullPrompt = `${context}\n\n${prompt}`;
+    const fullPrompt = `${context}\n\n${prompt}`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4",
@@ -86,33 +86,6 @@ async function generateResponse(prompt, userData, language) {
       : "An error occurred while generating your horoscope.";
   }
 }
-
-// Handle random user questions
-bot.on("message", async (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
-
-  // Ignore commands
-  if (text.startsWith("/")) return;
-
-  const userData = await getUserData(chatId);
-  const language = userData?.language || "ENG";
-  
-  // Check if user data exists
-  if (!userData?.birthday || !userData?.birthplace) {
-    bot.sendMessage(
-      chatId,
-      language === "RU"
-        ? "Пожалуйста, используйте /setinfo для добавления данных перед задаванием вопросов."
-        : "Please use /setinfo to add your details before asking questions."
-    );
-    return;
-  }
-  
-  // Generate response with user's saved data
-  const response = await generateResponse(text, userData, language);
-  bot.sendMessage(chatId, response);
-});
 
 // Command: /start with language selection
 bot.onText(/\/start/, async (msg) => {
@@ -178,26 +151,48 @@ bot.onText(/\/today/, async (msg) => {
   const userData = await getUserData(chatId);
 
   if (!userData?.birthday || !userData?.birthplace) {
-    bot.sendMessage(
-      chatId,
-      "Please set up your birthday and birthplace using /setinfo before using this command."
-    );
+    const message =
+      userData?.language === "RU"
+        ? "Пожалуйста, установите ваши данные с помощью /setinfo перед использованием этой команды."
+        : "Please set up your birthday and birthplace using /setinfo before using this command.";
+    bot.sendMessage(chatId, message);
   } else {
     const today = new Date().toISOString().split("T")[0];
     const prompt = `Provide a horoscope for ${today} for someone born on ${userData.birthday} in ${userData.birthplace}.`;
-    const horoscope = await generateResponse(prompt, userData.language);
+    const horoscope = await generateResponse(prompt, userData, userData.language);
     bot.sendMessage(chatId, horoscope);
   }
 });
 
-// **Handle random input**
+// Handle random user input
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
+  const text = msg.text;
+
+  if (text.startsWith("/")) return;
+
   const userData = await getUserData(chatId);
   const language = userData?.language || "ENG";
 
-  if (!msg.text.startsWith("/")) {
-    const response = await generateResponse(msg.text, language);
-    bot.sendMessage(chatId, response);
+  if (!userData?.birthday || !userData?.birthplace) {
+    const message =
+      language === "RU"
+        ? "Пожалуйста, используйте /setinfo для добавления данных перед задаванием вопросов."
+        : "Please use /setinfo to add your details before asking questions.";
+    bot.sendMessage(chatId, message);
+    return;
   }
+
+  const response = await generateResponse(text, userData, language);
+  bot.sendMessage(chatId, response);
+});
+
+// Graceful shutdown
+process.once("SIGINT", () => {
+  bot.stop("SIGINT");
+  client.close();
+});
+process.once("SIGTERM", () => {
+  bot.stop("SIGTERM");
+  client.close();
 });
