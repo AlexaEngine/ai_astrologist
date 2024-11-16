@@ -1,7 +1,3 @@
-
-Memory updated
-Here is a suggested README file for your "astrology_bot" repository:
-
 Astrology Telegram Bot
 This repository contains an astrology bot built using Python, OpenAI's GPT-4 API, and Telegram Bot API. The bot provides astrological insights and allows users to interact with it through natural language. It supports multiple languages and can translate non-English queries using deep_translator.
 
