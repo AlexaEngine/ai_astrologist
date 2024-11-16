@@ -14,9 +14,6 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Heroku
-Procfile*
-
 # IDE files
 .idea/
 .vscode/
