@@ -164,6 +164,79 @@ bot.onText(/\/today/, async (msg) => {
   }
 });
 
+// Command: /setinfo
+bot.onText(/\/setinfo/, async (msg) => {
+  const chatId = msg.chat.id;
+  const language = (await getUserData(chatId))?.language || "ENG";
+
+  const instructions =
+    language === "RU"
+      ? "Пожалуйста, введите ваши данные в следующем формате:\nИмя: [Ваше имя]\nДень рождения: [YYYY-MM-DD]\nМесто рождения: [Город, Страна]\nВремя рождения: [HH:MM] (Необязательно)"
+      : "Please provide your information in the following format:\nName: [Your Name]\nBirthday: [YYYY-MM-DD]\nBirthplace: [City, Country]\nBirth Time: [HH:MM] (Optional)";
+
+  bot.sendMessage(chatId, instructions, { reply_markup: { force_reply: true } });
+});
+
+// Handle user input for /setinfo
+bot.on("message", async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+
+  if (text.startsWith("Name:")) {
+    try {
+      const lines = text.split("\n");
+      const name = lines[0].split(":")[1]?.trim();
+      const birthday = lines[1].split(":")[1]?.trim();
+      const birthplace = lines[2].split(":")[1]?.trim();
+      const birthtime = lines[3]?.split(":")[1]?.trim() || null;
+
+      if (!name || !birthday || !birthplace) {
+        throw new Error("Missing required fields");
+      }
+
+      await saveUserData(chatId, { name, birthday, birthplace, birthtime });
+
+      const successMessage =
+        (await getUserData(chatId))?.language === "RU"
+          ? "Ваши данные успешно сохранены!"
+          : "Your information has been saved successfully!";
+      bot.sendMessage(chatId, successMessage);
+    } catch (error) {
+      console.error("Error saving user data:", error);
+      const errorMessage =
+        (await getUserData(chatId))?.language === "RU"
+          ? "Неверный формат. Пожалуйста, следуйте инструкциям в /setinfo."
+          : "Invalid format. Please follow the instructions in /setinfo.";
+      bot.sendMessage(chatId, errorMessage);
+    }
+  }
+});
+
+// Command: /viewinfo
+bot.onText(/\/viewinfo/, async (msg) => {
+  const chatId = msg.chat.id;
+  try {
+    const userData = await getUserData(chatId);
+
+    if (!userData) {
+      bot.sendMessage(chatId, "No information found. Use /setinfo to add your details.");
+      return;
+    }
+
+    const userInfo = `
+Here is your stored information:
+- Name: ${userData.name || "Not provided"}
+- Birthday: ${userData.birthday || "Not provided"}
+- Birthplace: ${userData.birthplace || "Not provided"}
+- Birth Time: ${userData.birthtime || "Not provided"}
+`;
+    bot.sendMessage(chatId, userInfo);
+  } catch (error) {
+    console.error("Error retrieving user info:", error);
+    bot.sendMessage(chatId, "An error occurred while retrieving your information. Please try again later.");
+  }
+});
+
 // Handle random user input
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
