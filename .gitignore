@@ -1,2 +1,26 @@
+# Environment variables
 .env
 venv
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+# OS files
+.DS_Store
+Thumbs.db
+
+# Heroku
+Procfile*
+
+# IDE files
+.idea/
+.vscode/
+
+# Build output
+dist/
+build/
