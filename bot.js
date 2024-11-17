@@ -1,22 +1,18 @@
-const OpenAI = require("openai"); // Import OpenAI library
-const TelegramBot = require("node-telegram-bot-api"); // Import Telegram bot API
-const { MongoClient } = require("mongodb"); // Import MongoDB library
-require("dotenv").config(); // Import dotenv to load .env variables
+const OpenAI = require("openai");
+const TelegramBot = require("node-telegram-bot-api");
+const { MongoClient } = require("mongodb");
+require("dotenv").config();
 
-// Initialize OpenAI client using the key from your .env file
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Create a Telegram bot instance using your bot token from the environment variables
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
-// Initialize MongoDB client
-const mongoUri = process.env.MONGO_URI; // MongoDB URI in your .env file
+const mongoUri = process.env.MONGO_URI;
 const client = new MongoClient(mongoUri);
 let db;
 
-// Connect to MongoDB
 (async () => {
   try {
     await client.connect();
@@ -27,7 +23,6 @@ let db;
   }
 })();
 
-// Helper function to save user data
 async function saveUserData(userId, data) {
   try {
     const usersCollection = db.collection("users");
@@ -41,7 +36,6 @@ async function saveUserData(userId, data) {
   }
 }
 
-// Helper function to get user data
 async function getUserData(userId) {
   try {
     const usersCollection = db.collection("users");
@@ -52,19 +46,18 @@ async function getUserData(userId) {
   }
 }
 
-// Helper function to generate OpenAI response
 async function generateResponse(prompt, userData, language) {
   try {
     const systemPrompt =
       language === "RU"
-        ? "Ты профессиональный астролог с более чем 50-летним опытом. Предоставляй подробные астрологические прогнозы только на русском языке."
-        : "You are a professional astrologer with over 50 years of experience. Provide detailed astrological insights in English.";
+        ? "Ты профессиональный астролог и психолог. Предоставляй гороскопы и поддерживай пользователей. Общайся только на русском."
+        : "You are a professional astrologer and psychologist. Provide horoscopes and support users. Respond only in English.";
 
     const context = userData
-      ? `The user is ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
+      ? `The user is named ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
           userData.birthtime
             ? `Their birth time is ${userData.birthtime}.`
-            : "Birth time is not provided."
+            : "The birth time is not available."
         }`
       : "No user details provided.";
 
@@ -78,16 +71,16 @@ async function generateResponse(prompt, userData, language) {
       ],
       temperature: 0.7,
     });
+
     return response.choices[0].message.content;
   } catch (error) {
     console.error("OpenAI Error:", error.response ? error.response.data : error.message);
     return language === "RU"
-      ? "Произошла ошибка при генерации прогноза."
-      : "An error occurred while generating the horoscope.";
+      ? "Произошла ошибка при генерации ответа."
+      : "An error occurred while generating the response.";
   }
 }
 
-// Command: /start with language selection
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, "Choose your language / Выберите язык:", {
@@ -100,7 +93,6 @@ bot.onText(/\/start/, async (msg) => {
   });
 });
 
-// Handle language selection
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
   const language = query.data === "LANG_RU" ? "RU" : "ENG";
@@ -115,7 +107,6 @@ bot.on("callback_query", async (query) => {
   bot.sendMessage(chatId, welcomeMessage);
 });
 
-// Command: /help
 bot.onText(/\/help/, async (msg) => {
   const userId = msg.chat.id;
   const userData = await getUserData(userId);
@@ -129,7 +120,7 @@ bot.onText(/\/help/, async (msg) => {
 - /tomorrow - Гороскоп на завтра.
 - /year - Годовой прогноз.
 - /compatibility - Совместимость.
-- /viewinfo - Посмотреть сохранённые данные.
+- /viewinfo - Посмотреть данные.
 - /setinfo - Добавить/обновить данные.
 `
       : `
@@ -145,101 +136,97 @@ Available commands:
   bot.sendMessage(userId, helpText);
 });
 
-// Command: /setinfo
-bot.onText(/\/setinfo/, async (msg) => {
-  const chatId = msg.chat.id;
-  const language = (await getUserData(chatId))?.language || "ENG";
-
-  const instructions =
-    language === "RU"
-      ? "Введите данные:\nИмя: [Ваше имя]\nДень рождения: [YYYY-MM-DD]\nМесто: [Город, Страна]\nВремя: [HH:MM] (необязательно)"
-      : "Enter your details:\nName: [Your Name]\nBirthday: [YYYY-MM-DD]\nBirthplace: [City, Country]\nBirth Time: [HH:MM] (Optional)";
-
-  bot.sendMessage(chatId, instructions, { reply_markup: { force_reply: true } });
-});
-
-// Handle user input for /setinfo
-bot.on("message", async (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
-
-  if (text.startsWith("Name:")) {
-    try {
-      const lines = text.split("\n");
-      const name = lines[0].split(":")[1]?.trim();
-      const birthday = lines[1].split(":")[1]?.trim();
-      const birthplace = lines[2].split(":")[1]?.trim();
-      const birthtime = lines[3]?.split(":")[1]?.trim() || null;
-
-      if (!name || !birthday || !birthplace) throw new Error("Missing fields");
-
-      await saveUserData(chatId, { name, birthday, birthplace, birthtime });
-
-      const successMessage =
-        (await getUserData(chatId))?.language === "RU"
-          ? "Данные успешно сохранены!"
-          : "Your information has been saved!";
-      bot.sendMessage(chatId, successMessage);
-    } catch (error) {
-      const errorMessage =
-        (await getUserData(chatId))?.language === "RU"
-          ? "Ошибка ввода. Следуйте инструкциям в /setinfo."
-          : "Invalid format. Follow instructions in /setinfo.";
-      bot.sendMessage(chatId, errorMessage);
-    }
-  }
-});
-
-// Command: /compatibility
-bot.onText(/\/compatibility/, async (msg) => {
+bot.onText(/\/today/, async (msg) => {
   const chatId = msg.chat.id;
   const userData = await getUserData(chatId);
 
   if (!userData?.birthday || !userData?.birthplace) {
-    const errorMessage =
+    bot.sendMessage(
+      chatId,
       userData?.language === "RU"
-        ? "Сначала введите ваши данные через /setinfo."
-        : "First, enter your details via /setinfo.";
-    bot.sendMessage(chatId, errorMessage);
-  } else {
-    const prompt = `Analyze compatibility based on astrology for the user born on ${userData.birthday}.`;
-    const response = await generateResponse(prompt, userData, userData.language);
-    bot.sendMessage(chatId, response);
-  }
-});
-
-// Command: /viewinfo
-bot.onText(/\/viewinfo/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userData = await getUserData(chatId);
-
-  if (!userData) {
-    bot.sendMessage(chatId, "No information found. Use /setinfo to provide details.");
+        ? "Введите ваши данные через /setinfo."
+        : "Set your data via /setinfo."
+    );
     return;
   }
 
-  const userInfo =
-    userData.language === "RU"
-      ? `Информация:\nИмя: ${userData.name || "Нет данных"}\nДень рождения: ${
-          userData.birthday || "Нет данных"
-        }\nМесто: ${userData.birthplace || "Нет данных"}\nВремя: ${
-          userData.birthtime || "Нет данных"
-        }`
-      : `Stored info:\nName: ${userData.name || "Not provided"}\nBirthday: ${
-          userData.birthday || "Not provided"
-        }\nBirthplace: ${userData.birthplace || "Not provided"}\nBirth Time: ${
-          userData.birthtime || "Not provided"
-        }`;
-
-  bot.sendMessage(chatId, userInfo);
+  const today = new Date().toISOString().split("T")[0];
+  const prompt = `Provide a horoscope for ${today} for someone born on ${userData.birthday} in ${userData.birthplace}.`;
+  const horoscope = await generateResponse(prompt, userData, userData.language);
+  bot.sendMessage(chatId, horoscope);
 });
 
-// Graceful shutdown
-process.once("SIGINT", () => {
-  bot.stop("SIGINT");
-  client.close();
+bot.onText(/\/tomorrow/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userData = await getUserData(chatId);
+
+  if (!userData?.birthday || !userData?.birthplace) {
+    bot.sendMessage(
+      chatId,
+      userData?.language === "RU"
+        ? "Введите ваши данные через /setinfo."
+        : "Set your data via /setinfo."
+    );
+    return;
+  }
+
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  const prompt = `Provide a horoscope for ${tomorrow} for someone born on ${userData.birthday} in ${userData.birthplace}.`;
+  const horoscope = await generateResponse(prompt, userData, userData.language);
+  bot.sendMessage(chatId, horoscope);
 });
-process.once("SIGTERM", () => {
-  bot.stop("SIGTERM");
-  client.close();
+
+bot.onText(/\/year/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userData = await getUserData(chatId);
+
+  if (!userData?.birthday || !userData?.birthplace) {
+    bot.sendMessage(
+      chatId,
+      userData?.language === "RU"
+        ? "Введите ваши данные через /setinfo."
+        : "Set your data via /setinfo."
+    );
+    return;
+  }
+
+  const prompt = `Provide an annual forecast for someone born on ${userData.birthday} in ${userData.birthplace}.`;
+  const forecast = await generateResponse(prompt, userData, userData.language);
+  bot.sendMessage(chatId, forecast);
+});
+
+// Add personal question handling
+bot.on("message", async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+
+  if (text.startsWith("/")) return;
+
+  const userData = await getUserData(chatId);
+  const language = userData?.language || "ENG";
+
+  if (!userData?.birthday || !userData?.birthplace) {
+    bot.sendMessage(
+      chatId,
+      language === "RU"
+        ? "Введите ваши данные через /setinfo."
+        : "Set your data via /setinfo."
+    );
+    return;
+  }
+
+  const response = await generateResponse(text, userData, language);
+  bot.sendMessage(chatId, response);
+});
+
+process.once("SIGINT", async () => {
+  console.log("SIGINT received. Cleaning up...");
+  await client.close();
+  process.exit(0);
+});
+
+process.once("SIGTERM", async () => {
+  console.log("SIGTERM received. Cleaning up...");
+  await client.close();
+  process.exit(0);
 });
