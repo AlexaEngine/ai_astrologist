@@ -7,11 +7,12 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
 
 const mongoUri = process.env.MONGO_URI;
 const client = new MongoClient(mongoUri);
 let db;
+
 
 // Connect to MongoDB
 (async () => {
@@ -21,11 +22,31 @@ let db;
     console.log("Connected to MongoDB");
   } catch (error) {
     console.error("MongoDB Connection Error:", error);
+    process.exit(1); // Exit if the connection fails
   }
 })();
+const express = require("express");
+const bodyParser = require("body-parser");
 
-// Save user data to MongoDB
+const app = express();
+app.use(bodyParser.json());
+
+const PORT = process.env.PORT || 3000;
+const URL = process.env.BOT_URL;
+
+bot.setWebHook(`${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
+
+app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
 async function saveUserData(userId, data) {
+  if (!db) return; // Ensure db is initialized
   try {
     const usersCollection = db.collection("users");
     await usersCollection.updateOne(
@@ -38,8 +59,8 @@ async function saveUserData(userId, data) {
   }
 }
 
-// Fetch user data from MongoDB
 async function getUserData(userId) {
+  if (!db) return null; // Ensure db is initialized
   try {
     const usersCollection = db.collection("users");
     return await usersCollection.findOne({ userId });
@@ -167,22 +188,21 @@ bot.on("callback_query", async (query) => {
 bot.onText(/\/tomorrow/, async (msg) => {
   const chatId = msg.chat.id;
   const userData = await getUserData(chatId);
-
   if (!userData?.birthday || !userData?.birthplace) {
     bot.sendMessage(
       chatId,
       userData?.language === "RU"
-        ? "Сначала введите данные через /setinfo."
-        : "Set your data via /setinfo first."
+        ? "Сначала введите ваши данные через /setinfo."
+        : "Please set your information first using /setinfo."
     );
     return;
   }
-
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-  const prompt = `Create a soothing and uplifting horoscope for ${dateString}, tailored to someone born on ${userData.birthday} in ${userData.birthplace}. Focus on positivity and gentle guidance.`;
+  const prompt = `Create a soothing and uplifting horoscope for ${tomorrow}, tailored to someone born on ${userData.birthday} in ${userData.birthplace}. Focus on positivity and gentle guidance.`;
   const response = await generateResponse(prompt, userData, userData.language);
   bot.sendMessage(chatId, response);
 });
+
 
 
 bot.onText(/\/year/, async (msg) => {
