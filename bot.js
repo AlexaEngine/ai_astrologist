@@ -50,8 +50,8 @@ async function generateResponse(prompt, userData, language) {
   try {
     const systemPrompt =
       language === "RU"
-        ? "Ты опытный астролог и психолог. Давай прогнозы и поддержку. Отвечай спокойно и дружелюбно на русском языке."
-        : "You are an experienced astrologer and psychologist. Provide insights and support in a calm, friendly tone in English.";
+      ? "Ты заботливый астролог и психолог, с более 50 летним опытом, помогающий людям находить ответы и поддержку. Отвечай с теплом, правдиво, пониманием и профессионализмом, помогая пользователям справляться с их жизненными трудностями."
+      : "You are a compassionate astrologer and psychologist with over 50 years of experience, helping people find answers and support. Respond with warmth, honesty, understanding, and professionalism, guiding users through their life's challenges.";
 
     const context = userData
       ? `The user's name is ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
@@ -101,8 +101,8 @@ bot.on("callback_query", async (query) => {
 
   const welcomeMessage =
     language === "RU"
-      ? "Привет! Я ваш астрологический помощник. Используйте /help для доступных команд."
-      : "Hi! I’m your astrology assistant. Use /help to see the available commands.";
+      ? "Привет! Я ваш астрологический помощник и гид. Используйте /help, чтобы узнать доступные команды и начать наш диалог"
+      : "Hi! I’m your astrology assistant and guide. Use /help to explore the available commands and start our conversation.";
 
   bot.sendMessage(chatId, welcomeMessage);
 });
@@ -167,7 +167,7 @@ bot.onText(/\/tomorrow/, async (msg) => {
     return;
   }
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-  const prompt = `Generate a supportive horoscope for ${tomorrow} based on ${userData.birthday} and ${userData.birthplace}.`;
+  const prompt = `Create a soothing and uplifting horoscope for ${dateString}, tailored to someone born on ${userData.birthday} in ${userData.birthplace}. Focus on positivity and gentle guidance.`;
   const horoscope = await generateResponse(prompt, userData, userData.language);
   bot.sendMessage(chatId, horoscope);
 });
@@ -184,7 +184,7 @@ bot.onText(/\/year/, async (msg) => {
     );
     return;
   }
-  const prompt = `Provide a detailed yet supportive annual horoscope for ${userData.birthday} in ${userData.birthplace}.`;
+  const prompt = `Create a detailed and encouraging annual horoscope for someone born on ${userData.birthday} in ${userData.birthplace}, focusing on personal growth, opportunities, and guidance for navigating challenges.`;
   const yearForecast = await generateResponse(prompt, userData, userData.language);
   bot.sendMessage(chatId, yearForecast);
 });
@@ -203,7 +203,7 @@ bot.onText(/\/compatibility/, async (msg) => {
     return;
   }
 
-  const prompt = `Analyze astrological compatibility for the user born on ${userData.birthday}.`;
+  const prompt = `Provide a thoughtful analysis of astrological compatibility for someone born on ${userData.birthday}, focusing on key strengths, challenges, and ways to foster harmony in relationships`;
   const compatibility = await generateResponse(prompt, userData, userData.language);
   bot.sendMessage(chatId, compatibility);
 });
@@ -287,7 +287,7 @@ bot.onText(/\/setinfo/, async (msg) => {
         return;
       }
     
-      const prompt = `Answer this user question in a supportive and conversational tone. The user is named ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}.${
+      const prompt = `Provide an insightful and honest response to this user’s question, while maintaining a supportive and conversational tone. Focus on clarity, guidance, and empowering them to navigate their situation. The user is named ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}.${
         userData.birthtime ? ` Their birth time is ${userData.birthtime}.` : ""
       } User question: "${text}"`;
       const response = await generateResponse(prompt, userData, language);
