@@ -50,16 +50,16 @@ async function generateResponse(prompt, userData, language) {
   try {
     const systemPrompt =
       language === "RU"
-        ? "Ты профессиональный астролог и психолог. Предоставляй гороскопы и поддерживай пользователей. Общайся только на русском."
-        : "You are a professional astrologer and psychologist. Provide horoscopes and support users. Respond only in English.";
+        ? "Ты опытный астролог и психолог. Давай прогнозы и поддержку. Отвечай спокойно и дружелюбно на русском языке."
+        : "You are an experienced astrologer and psychologist. Provide insights and support in a calm, friendly tone in English.";
 
     const context = userData
-      ? `The user is named ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
+      ? `The user's name is ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
           userData.birthtime
             ? `Their birth time is ${userData.birthtime}.`
-            : "The birth time is not available."
+            : "The birth time is not provided."
         }`
-      : "No user details provided.";
+      : "No user details are available.";
 
     const fullPrompt = `${context}\n\n${prompt}`;
 
@@ -101,8 +101,8 @@ bot.on("callback_query", async (query) => {
 
   const welcomeMessage =
     language === "RU"
-      ? "Добро пожаловать! Я ваш астрологический бот. Используйте /help, чтобы увидеть команды."
-      : "Welcome! I am your Astrology Bot. Use /help to see available commands.";
+      ? "Привет! Я ваш астрологический помощник. Используйте /help для доступных команд."
+      : "Hi! I’m your astrology assistant. Use /help to see the available commands.";
 
   bot.sendMessage(chatId, welcomeMessage);
 });
@@ -115,22 +115,22 @@ bot.onText(/\/help/, async (msg) => {
   const helpText =
     language === "RU"
       ? `
-Доступные команды:
+Вот доступные команды:
 - /today - Гороскоп на сегодня.
 - /tomorrow - Гороскоп на завтра.
-- /year - Годовой прогноз.
+- /year - Прогноз на год.
 - /compatibility - Совместимость.
-- /viewinfo - Посмотреть данные.
-- /setinfo - Добавить/обновить данные.
+- /viewinfo - Показать данные.
+- /setinfo - Указать или обновить данные.
 `
       : `
-Available commands:
-- /today - Get today's horoscope.
-- /tomorrow - Get tomorrow's horoscope.
-- /year - Get your annual forecast.
+Here are the available commands:
+- /today - Horoscope for today.
+- /tomorrow - Horoscope for tomorrow.
+- /year - Annual forecast.
 - /compatibility - Check compatibility.
-- /viewinfo - View saved information.
-- /setinfo - Add or update personal info.
+- /viewinfo - Show saved details.
+- /setinfo - Provide or update details.
 `;
 
   bot.sendMessage(userId, helpText);
@@ -139,19 +139,17 @@ Available commands:
 bot.onText(/\/today/, async (msg) => {
   const chatId = msg.chat.id;
   const userData = await getUserData(chatId);
-
   if (!userData?.birthday || !userData?.birthplace) {
     bot.sendMessage(
       chatId,
       userData?.language === "RU"
-        ? "Введите ваши данные через /setinfo."
-        : "Set your data via /setinfo."
+        ? "Сначала введите ваши данные через /setinfo."
+        : "Please set your information first using /setinfo."
     );
     return;
   }
-
   const today = new Date().toISOString().split("T")[0];
-  const prompt = `Provide a horoscope for ${today} for someone born on ${userData.birthday} in ${userData.birthplace}.`;
+  const prompt = `Generate a friendly, calming horoscope for ${today} based on ${userData.birthday} and ${userData.birthplace}.`;
   const horoscope = await generateResponse(prompt, userData, userData.language);
   bot.sendMessage(chatId, horoscope);
 });
@@ -159,19 +157,17 @@ bot.onText(/\/today/, async (msg) => {
 bot.onText(/\/tomorrow/, async (msg) => {
   const chatId = msg.chat.id;
   const userData = await getUserData(chatId);
-
   if (!userData?.birthday || !userData?.birthplace) {
     bot.sendMessage(
       chatId,
       userData?.language === "RU"
-        ? "Введите ваши данные через /setinfo."
-        : "Set your data via /setinfo."
+        ? "Сначала введите ваши данные через /setinfo."
+        : "Please set your information first using /setinfo."
     );
     return;
   }
-
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-  const prompt = `Provide a horoscope for ${tomorrow} for someone born on ${userData.birthday} in ${userData.birthplace}.`;
+  const prompt = `Generate a supportive horoscope for ${tomorrow} based on ${userData.birthday} and ${userData.birthplace}.`;
   const horoscope = await generateResponse(prompt, userData, userData.language);
   bot.sendMessage(chatId, horoscope);
 });
@@ -179,54 +175,135 @@ bot.onText(/\/tomorrow/, async (msg) => {
 bot.onText(/\/year/, async (msg) => {
   const chatId = msg.chat.id;
   const userData = await getUserData(chatId);
+  if (!userData?.birthday || !userData?.birthplace) {
+    bot.sendMessage(
+      chatId,
+      userData?.language === "RU"
+        ? "Сначала введите ваши данные через /setinfo."
+        : "Please set your information first using /setinfo."
+    );
+    return;
+  }
+  const prompt = `Provide a detailed yet supportive annual horoscope for ${userData.birthday} in ${userData.birthplace}.`;
+  const yearForecast = await generateResponse(prompt, userData, userData.language);
+  bot.sendMessage(chatId, yearForecast);
+});
+
+bot.onText(/\/compatibility/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userData = await getUserData(chatId);
 
   if (!userData?.birthday || !userData?.birthplace) {
     bot.sendMessage(
       chatId,
       userData?.language === "RU"
-        ? "Введите ваши данные через /setinfo."
-        : "Set your data via /setinfo."
+        ? "Сначала введите ваши данные через /setinfo."
+        : "Please set your information first using /setinfo."
     );
     return;
   }
 
-  const prompt = `Provide an annual forecast for someone born on ${userData.birthday} in ${userData.birthplace}.`;
-  const forecast = await generateResponse(prompt, userData, userData.language);
-  bot.sendMessage(chatId, forecast);
+  const prompt = `Analyze astrological compatibility for the user born on ${userData.birthday}.`;
+  const compatibility = await generateResponse(prompt, userData, userData.language);
+  bot.sendMessage(chatId, compatibility);
 });
 
-// Add personal question handling
-bot.on("message", async (msg) => {
+bot.onText(/\/viewinfo/, async (msg) => {
   const chatId = msg.chat.id;
-  const text = msg.text;
+  const userData = await getUserData(chatId);
+  if (!userData) {
+    bot.sendMessage(chatId, "No information found. Use /setinfo to add your details.");
+    return;
+  }
+  const userInfo =
+    userData.language === "RU"
+      ? `Ваши данные:\nИмя: ${userData.name}\nДата рождения: ${userData.birthday}\nМесто: ${userData.birthplace}\nВремя: ${userData.birthtime || "Не указано"}`
+      : `Your details:\nName: ${userData.name}\nBirthday: ${userData.birthday}\nBirthplace: ${userData.birthplace}\nTime: ${userData.birthtime || "Not provided"}`;
+  bot.sendMessage(chatId, userInfo);
+});
 
-  if (text.startsWith("/")) return;
-
+bot.onText(/\/setinfo/, async (msg) => {
+  const chatId = msg.chat.id;
   const userData = await getUserData(chatId);
   const language = userData?.language || "ENG";
 
-  if (!userData?.birthday || !userData?.birthplace) {
-    bot.sendMessage(
-      chatId,
-      language === "RU"
-        ? "Введите ваши данные через /setinfo."
-        : "Set your data via /setinfo."
-    );
-    return;
-  }
-
-  const response = await generateResponse(text, userData, language);
-  bot.sendMessage(chatId, response);
-});
-
-process.once("SIGINT", async () => {
-  console.log("SIGINT received. Cleaning up...");
-  await client.close();
-  process.exit(0);
-});
-
-process.once("SIGTERM", async () => {
-  console.log("SIGTERM received. Cleaning up...");
-  await client.close();
-  process.exit(0);
-});
+  const message =
+    language === "RU"
+          ? "Введите ваши данные: Имя, Дата рождения (YYYY-MM-DD), Место рождения, Время рождения (необязательно)."
+          : "Enter your details: Name, Birthday (YYYY-MM-DD), Birthplace, and Birth Time (optional).";
+    
+      bot.sendMessage(chatId, message, { reply_markup: { force_reply: true } });
+    });
+    
+    // Handle user input for /setinfo
+    bot.on("message", async (msg) => {
+      const chatId = msg.chat.id;
+      const text = msg.text;
+    
+      if (text.startsWith("/") || !text.includes("Name:")) return; // Ignore other commands or unrelated messages
+    
+      try {
+        const lines = text.split("\n");
+        const name = lines[0].split(":")[1]?.trim();
+        const birthday = lines[1].split(":")[1]?.trim();
+        const birthplace = lines[2].split(":")[1]?.trim();
+        const birthtime = lines[3]?.split(":")[1]?.trim() || null;
+    
+        if (!name || !birthday || !birthplace) throw new Error("Missing fields");
+    
+        await saveUserData(chatId, { name, birthday, birthplace, birthtime });
+    
+        const successMessage =
+          (await getUserData(chatId))?.language === "RU"
+            ? "Данные успешно сохранены!"
+            : "Your details have been saved!";
+        bot.sendMessage(chatId, successMessage);
+      } catch (error) {
+        const errorMessage =
+          (await getUserData(chatId))?.language === "RU"
+            ? "Ошибка. Убедитесь, что вы ввели данные в правильном формате."
+            : "Error. Please ensure you entered the details in the correct format.";
+        bot.sendMessage(chatId, errorMessage);
+      }
+    });
+    
+    // Handle personal questions and general text
+    bot.on("message", async (msg) => {
+      const chatId = msg.chat.id;
+      const text = msg.text;
+    
+      if (text.startsWith("/")) return; // Skip if it's a command
+    
+      const userData = await getUserData(chatId);
+      const language = userData?.language || "ENG";
+    
+      if (!userData?.birthday || !userData?.birthplace) {
+        bot.sendMessage(
+          chatId,
+          language === "RU"
+            ? "Сначала введите ваши данные через /setinfo."
+            : "Please set your information first using /setinfo."
+        );
+        return;
+      }
+    
+      const prompt = `Answer this user question in a supportive and conversational tone. The user is named ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}.${
+        userData.birthtime ? ` Their birth time is ${userData.birthtime}.` : ""
+      } User question: "${text}"`;
+      const response = await generateResponse(prompt, userData, language);
+      bot.sendMessage(chatId, response);
+    });
+    
+    // Graceful shutdown
+    process.once("SIGINT", async () => {
+      console.log("SIGINT received. Cleaning up...");
+      await client.close();
+      process.exit(0);
+    });
+    
+    process.once("SIGTERM", async () => {
+      console.log("SIGTERM received. Cleaning up...");
+      await client.close();
+      process.exit(0);
+    });
+    
