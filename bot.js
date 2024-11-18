@@ -10,6 +10,8 @@ const mongoUri = process.env.MONGO_URI;
 const client = new MongoClient(mongoUri);
 let db;
 
+const PORT = process.env.PORT || 3000;
+
 // MongoDB Connection
 (async () => {
   try {
