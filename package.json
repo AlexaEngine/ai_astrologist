@@ -12,5 +12,6 @@
     "mongodb": "^6.10.0",
     "node-telegram-bot-api": "^0.59.0",
     "openai": "^4.68.1"
+    
   }
 }

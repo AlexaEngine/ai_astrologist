@@ -10,7 +10,16 @@ const mongoUri = process.env.MONGO_URI;
 const client = new MongoClient(mongoUri);
 let db;
 
+// Use the PORT declaration only once
 const PORT = process.env.PORT || 3000;
+
+const express = require("express");
+const bodyParser = require("body-parser");
+
+const app = express();
+app.use(bodyParser.json());
+
+const URL = process.env.BOT_URL;
 
 // MongoDB Connection
 (async () => {
@@ -23,15 +32,6 @@ const PORT = process.env.PORT || 3000;
     process.exit(1);
   }
 })();
-
-const express = require("express");
-const bodyParser = require("body-parser");
-
-const app = express();
-app.use(bodyParser.json());
-
-const PORT = process.env.PORT || 3000;
-const URL = process.env.BOT_URL;
 
 // Set Webhook
 bot.setWebHook(`${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
@@ -82,49 +82,50 @@ async function generateResponse(prompt, userData, language) {
   try {
     const systemPrompt =
       language === "RU"
-        ? "Ты заботливый астролог и психолог, с более 50 летним опытом..."
-        : "You are a compassionate astrologer and psychologist with over 50 years of experience...";
+        ? "Ты заботливый, понимающий и мудрый астролог и психолог с более чем 50-летним опытом. Твоя задача — поддерживать пользователей, помогать им находить внутреннюю силу, справляться с тревогой, депрессией и сложными жизненными ситуациями, такими как насилие или кризис. Ты говоришь искренне, с теплотой, предлагая не только астрологические прогнозы, но и эмоциональную поддержку, основанную на индивидуальных особенностях человека. Общайся так, чтобы каждый пользователь чувствовал, что ты рядом, что тебя волнуют их чувства и потребности."
+        : "You are a caring, understanding, and wise astrologer and psychologist with over 50 years of experience. Your mission is to support users, help them find inner strength, cope with anxiety, depression, and difficult life situations such as abuse or crises. You speak sincerely and warmly, offering not only astrological insights but also emotional support tailored to each individual. Engage in a way that makes every user feel like you are there for them, genuinely concerned about their emotions and needs.";
 
-    const context = userData
-      ? `The user's name is ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
-          userData.birthtime
-            ? `Their birth time is ${userData.birthtime}.`
-            : "The birth time is not provided."
-        }`
-      : "No user details provided.";
-
-    const fullPrompt = `${context}\n\n${prompt}`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: fullPrompt },
-      ],
-      temperature: 0.7,
-    });
-
-    return response.choices[0].message.content;
-  } catch (error) {
-    console.error("OpenAI Error:", error.response ? error.response.data : error.message);
-    return language === "RU"
-      ? "Произошла ошибка при генерации ответа."
-      : "An error occurred while generating the response.";
+        const context = userData
+        ? `The user's name is ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
+            userData.birthtime
+              ? `Their birth time is ${userData.birthtime}.`
+              : "The birth time is not provided."
+          }`
+        : "No user details provided.";
+  
+      const fullPrompt = `${context}\n\n${prompt}`;
+  
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: fullPrompt },
+        ],
+        temperature: 0.7,
+      });
+  
+      return response.choices[0].message.content;
+    } catch (error) {
+      console.error("OpenAI Error:", error.response ? error.response.data : error.message);
+      return language === "RU"
+        ? "Произошла ошибка при генерации ответа."
+        : "An error occurred while generating the response.";
+    }
   }
-}
-// Start Command
-bot.onText(/\/start/, async (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, "Choose your language / Выберите язык:", {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "English", callback_data: "LANG_ENG" }],
-        [{ text: "Русский", callback_data: "LANG_RU" }],
-      ],
-    },
+  
+  // Start Command
+  bot.onText(/\/start/, async (msg) => {
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, "Choose your language / Выберите язык:", {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "English", callback_data: "LANG_ENG" }],
+          [{ text: "Русский", callback_data: "LANG_RU" }],
+        ],
+      },
+    });
   });
-});
-
+  
 // Language Selection
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
@@ -170,7 +171,7 @@ Available commands:
   bot.sendMessage(chatId, helpText);
 });
 
-// Handle Commands Requiring User Data
+// Command Handlers
 async function handleHoroscopeCommand(msg, promptTemplate) {
   const chatId = msg.chat.id;
   const userData = await getUserData(chatId);
@@ -186,17 +187,15 @@ async function handleHoroscopeCommand(msg, promptTemplate) {
   }
 
   const date = new Date().toISOString().split("T")[0];
-  const prompt = promptTemplate.replace(
-    /\{\{date\}\}/g,
-    date
-  ).replace(/\{\{userData.birthday\}\}/g, userData.birthday)
-    .replace(/\{\{userData.birthplace\}\}/g, userData.birthplace);
-    
+  const prompt = promptTemplate
+    .replace(/\{\{date\}\}/g, date)
+    .replace(/\{\{userData\.birthday\}\}/g, userData.birthday)
+    .replace(/\{\{userData\.birthplace\}\}/g, userData.birthplace);
+
   const response = await generateResponse(prompt, userData, userData.language);
   bot.sendMessage(chatId, response);
 }
 
-// Command Handlers
 bot.onText(/\/today/, (msg) => {
   const prompt = "Generate a horoscope for {{date}} for someone born on {{userData.birthday}} in {{userData.birthplace}}.";
   handleHoroscopeCommand(msg, prompt);
@@ -219,7 +218,6 @@ bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
-  // Skip commands and handle /setinfo
   if (text.startsWith("/")) return;
 
   const userData = await getUserData(chatId);
@@ -230,7 +228,7 @@ bot.on("message", async (msg) => {
       chatId,
       language === "RU"
         ? "Сначала введите данные через /setinfo."
-        : "Please set your data via /setinfo first."
+        : "Please set your data using /setinfo first."
     );
     return;
   }
