@@ -5,6 +5,10 @@ require("dotenv").config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { webHook: true });
+if (!process.env.BOT_URL) {
+  console.log("Using polling fallback...");
+  bot.startPolling();
+}
 
 const mongoUri = process.env.MONGO_URI;
 const client = new MongoClient(mongoUri);
@@ -32,18 +36,20 @@ const URL = process.env.BOT_URL;
     process.exit(1);
   }
 })();
-
+console.log("Telegram Bot Token:", process.env.TELEGRAM_BOT_TOKEN);
+console.log("Webhook URL:", `${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
 // Set Webhook
 bot.setWebHook(`${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
 
 app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   try {
-    console.log("Webhook received update:", req.body); // Debugging logs
+    console.log("Webhook hit with payload:", req.body);
     bot.processUpdate(req.body);
-    res.sendStatus(200);
+    console.log("Processed update successfully!");
+    res.sendStatus(200); // Always respond with 200 OK
   } catch (error) {
-    console.error("Error in webhook processing:", error);
-    res.sendStatus(500);
+    console.error("Error in Webhook processing:", error);
+    res.sendStatus(500); // Signal error to Telegram
   }
 });
 
