@@ -5,9 +5,8 @@ require("dotenv").config();
 
 // OpenAI API Configuration
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, 
+  apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 // MongoDB Configuration
 const mongoUri = process.env.MONGO_URI;
@@ -47,7 +46,7 @@ console.log("✅ Webhook URL:", `${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
 // Heroku Endpoint to Process Webhooks
 app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   try {
-    console.log("🔍 Incoming Telegram Update:", JSON.stringify(req.body, null, 2)); // Log updates
+    console.log("🔍 Incoming Telegram Update:", JSON.stringify(req.body, null, 2));
     bot.processUpdate(req.body);
     res.sendStatus(200);
   } catch (error) {
@@ -92,8 +91,8 @@ async function generateResponse(prompt, userData, language) {
   try {
     const systemPrompt =
       language === "RU"
-        ? "Ты заботливый, понимающий и мудрый астролог и психолог с более чем 50-летним опытом. Твоя задача — поддерживать пользователей, помогать им находить внутреннюю силу, справляться с тревогой, депрессией и сложными жизненными ситуациями, такими как насилие или кризис. Ты говоришь искренне, с теплотой, предлагая не только астрологические прогнозы, но и эмоциональную поддержку, основанную на индивидуальных особенностях человека. Общайся так, чтобы каждый пользователь чувствовал, что ты рядом, что тебя волнуют их чувства и потребности."
-        : "You are a caring, understanding, and wise astrologer and psychologist with over 50 years of experience. Your mission is to support users, help them find inner strength, cope with anxiety, depression, and difficult life situations such as abuse or crises. You speak sincerely and warmly, offering not only astrological insights but also emotional support tailored to each individual. Engage in a way that makes every user feel like you are there for them, genuinely concerned about their emotions and needs.";
+        ? "Ты заботливый, понимающий и мудрый астролог и психолог с более чем 50-летним опытом. ..."
+        : "You are a caring, understanding, and wise astrologer and psychologist with over 50 years of experience...";
 
     const context = userData
       ? `The user's name is ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
@@ -145,8 +144,8 @@ bot.on("callback_query", async (query) => {
 
   const welcomeMessage =
     language === "RU"
-      ? "Привет! Я ваш астрологический помощник и гид. Используйте /help, чтобы узнать доступные команды и начать наш диалог."
-      : "Hi! I’m your astrology assistant and guide. Use /help to explore the available commands and start our conversation.";
+      ? "Привет! Я ваш астрологический помощник и гид. Используйте /help, чтобы узнать доступные команды."
+      : "Hi! I’m your astrology assistant and guide. Use /help to explore the available commands.";
 
   bot.sendMessage(chatId, welcomeMessage);
 });
@@ -159,24 +158,8 @@ bot.onText(/\/help/, async (msg) => {
 
   const helpText =
     language === "RU"
-      ? `
-Доступные команды:
-- /today - Гороскоп на сегодня.
-- /tomorrow - Гороскоп на завтра.
-- /year - Годовой прогноз.
-- /compatibility - Совместимость.
-- /viewinfo - Посмотреть данные.
-- /setinfo - Добавить/обновить данные.
-`
-      : `
-Available commands:
-- /today - Get today's horoscope.
-- /tomorrow - Get tomorrow's horoscope.
-- /year - Get your annual forecast.
-- /compatibility - Check compatibility.
-- /viewinfo - View saved information.
-- /setinfo - Add or update personal info.
-`;
+      ? "Доступные команды:\n/today - Гороскоп на сегодня\n/tomorrow - Гороскоп на завтра\n/year - Годовой прогноз"
+      : "Available commands:\n/today - Get today's horoscope\n/tomorrow - Get tomorrow's horoscope\n/year - Get your annual forecast.";
 
   bot.sendMessage(chatId, helpText);
 });
@@ -213,7 +196,7 @@ bot.onText(/\/today/, (msg) => {
 
 bot.onText(/\/tomorrow/, (msg) => {
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-  const prompt = `Create a horoscope for ${tomorrow}, for someone born on {{userData.birthday}} in {{userData.birthplace}}.`;
+  const prompt = `Create a horoscope for ${tomorrow} for someone born on {{userData.birthday}} in {{userData.birthplace}}.`;
   handleHoroscopeCommand(msg, prompt);
 });
 
