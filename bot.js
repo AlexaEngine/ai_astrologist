@@ -4,57 +4,54 @@ const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { webHook: true });
-if (!process.env.BOT_URL) {
-  console.log("Using polling fallback...");
-  bot.startPolling();
-}
-
 const mongoUri = process.env.MONGO_URI;
 const client = new MongoClient(mongoUri);
+
 let db;
 
 // Use the PORT declaration only once
 const PORT = process.env.PORT || 3000;
+const URL = process.env.BOT_URL;
 
+// Import Express
 const express = require("express");
 const bodyParser = require("body-parser");
 
 const app = express();
 app.use(bodyParser.json());
 
-const URL = process.env.BOT_URL;
+// Initialize Telegram Bot with Webhook
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { webHook: true });
+bot.setWebHook(`${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
+
+console.log("✅ Webhook URL:", `${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
 
 // MongoDB Connection
 (async () => {
   try {
     await client.connect();
     db = client.db("astrologyBotDB");
-    console.log("Connected to MongoDB");
+    console.log("✅ Connected to MongoDB");
   } catch (error) {
-    console.error("MongoDB Connection Error:", error);
+    console.error("❌ MongoDB Connection Error:", error);
     process.exit(1);
   }
 })();
-console.log("Telegram Bot Token:", process.env.TELEGRAM_BOT_TOKEN);
-console.log("Webhook URL:", `${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
-// Set Webhook
-bot.setWebHook(`${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
 
+// Heroku Endpoint to Process Webhooks
 app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   try {
-    console.log("Webhook hit with payload:", req.body);
     bot.processUpdate(req.body);
-    console.log("Processed update successfully!");
-    res.sendStatus(200); // Always respond with 200 OK
+    res.sendStatus(200);
   } catch (error) {
-    console.error("Error in Webhook processing:", error);
-    res.sendStatus(500); // Signal error to Telegram
+    console.error("❌ Webhook Processing Error:", error.message);
+    res.sendStatus(500);
   }
 });
 
+// Start the Server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
 
 // Save and Retrieve User Data
@@ -68,7 +65,7 @@ async function saveUserData(userId, data) {
       { upsert: true }
     );
   } catch (error) {
-    console.error("Error saving user data:", error);
+    console.error("❌ Error saving user data:", error);
   }
 }
 
@@ -78,7 +75,7 @@ async function getUserData(userId) {
     const usersCollection = db.collection("users");
     return await usersCollection.findOne({ userId });
   } catch (error) {
-    console.error("Error fetching user data:", error);
+    console.error("❌ Error fetching user data:", error);
     return null;
   }
 }
@@ -91,47 +88,47 @@ async function generateResponse(prompt, userData, language) {
         ? "Ты заботливый, понимающий и мудрый астролог и психолог с более чем 50-летним опытом. Твоя задача — поддерживать пользователей, помогать им находить внутреннюю силу, справляться с тревогой, депрессией и сложными жизненными ситуациями, такими как насилие или кризис. Ты говоришь искренне, с теплотой, предлагая не только астрологические прогнозы, но и эмоциональную поддержку, основанную на индивидуальных особенностях человека. Общайся так, чтобы каждый пользователь чувствовал, что ты рядом, что тебя волнуют их чувства и потребности."
         : "You are a caring, understanding, and wise astrologer and psychologist with over 50 years of experience. Your mission is to support users, help them find inner strength, cope with anxiety, depression, and difficult life situations such as abuse or crises. You speak sincerely and warmly, offering not only astrological insights but also emotional support tailored to each individual. Engage in a way that makes every user feel like you are there for them, genuinely concerned about their emotions and needs.";
 
-        const context = userData
-        ? `The user's name is ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
-            userData.birthtime
-              ? `Their birth time is ${userData.birthtime}.`
-              : "The birth time is not provided."
-          }`
-        : "No user details provided.";
-  
-      const fullPrompt = `${context}\n\n${prompt}`;
-  
-      const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: fullPrompt },
-        ],
-        temperature: 0.7,
-      });
-  
-      return response.choices[0].message.content;
-    } catch (error) {
-      console.error("OpenAI Error:", error.response ? error.response.data : error.message);
-      return language === "RU"
-        ? "Произошла ошибка при генерации ответа."
-        : "An error occurred while generating the response.";
-    }
-  }
-  
-  // Start Command
-  bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, "Choose your language / Выберите язык:", {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "English", callback_data: "LANG_ENG" }],
-          [{ text: "Русский", callback_data: "LANG_RU" }],
-        ],
-      },
+    const context = userData
+      ? `The user's name is ${userData.name}, born on ${userData.birthday}, in ${userData.birthplace}. ${
+          userData.birthtime
+            ? `Their birth time is ${userData.birthtime}.`
+            : "The birth time is not provided."
+        }`
+      : "No user details provided.";
+
+    const fullPrompt = `${context}\n\n${prompt}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: fullPrompt },
+      ],
+      temperature: 0.7,
     });
+
+    return response.choices[0].message.content;
+  } catch (error) {
+    console.error("❌ OpenAI Error:", error.message);
+    return language === "RU"
+      ? "Произошла ошибка при генерации ответа."
+      : "An error occurred while generating the response.";
+  }
+}
+
+// Start Command
+bot.onText(/\/start/, async (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, "Choose your language / Выберите язык:", {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "English", callback_data: "LANG_ENG" }],
+        [{ text: "Русский", callback_data: "LANG_RU" }],
+      ],
+    },
   });
-  
+});
+
 // Language Selection
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
@@ -219,40 +216,15 @@ bot.onText(/\/year/, (msg) => {
   handleHoroscopeCommand(msg, prompt);
 });
 
-// Unified Message Handler for /setinfo and Custom Queries
-bot.on("message", async (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
-
-  if (text.startsWith("/")) return;
-
-  const userData = await getUserData(chatId);
-  const language = userData?.language || "ENG";
-
-  if (!userData?.birthday || !userData?.birthplace) {
-    bot.sendMessage(
-      chatId,
-      language === "RU"
-        ? "Сначала введите данные через /setinfo."
-        : "Please set your data using /setinfo first."
-    );
-    return;
-  }
-
-  const prompt = `Provide an insightful response to this user’s question. The user is named ${userData.name}, born on ${userData.birthday} in ${userData.birthplace}. Their question: "${text}"`;
-  const response = await generateResponse(prompt, userData, language);
-  bot.sendMessage(chatId, response);
-});
-
 // Graceful Shutdown
 process.once("SIGINT", async () => {
-  console.log("SIGINT received. Cleaning up...");
+  console.log("SIGINT received. Closing MongoDB...");
   await client.close();
   process.exit(0);
 });
 
 process.once("SIGTERM", async () => {
-  console.log("SIGTERM received. Cleaning up...");
+  console.log("SIGTERM received. Closing MongoDB...");
   await client.close();
   process.exit(0);
 });
