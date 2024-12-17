@@ -1,11 +1,11 @@
-const { Configuration, OpenAIApi } = require("openai");
+const OpenAI = require("openai");
 const TelegramBot = require("node-telegram-bot-api");
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
 // OpenAI API Configuration
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY, 
 });
 const openai = new OpenAIApi(configuration);
 
@@ -105,7 +105,7 @@ async function generateResponse(prompt, userData, language) {
 
     const fullPrompt = `${context}\n\n${prompt}`;
 
-    const response = await openai.createChatCompletion({
+    const response = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
@@ -114,7 +114,7 @@ async function generateResponse(prompt, userData, language) {
       temperature: 0.7,
     });
 
-    return response.data.choices[0].message.content;
+    return response.choices[0]?.message?.content || "No response generated.";
   } catch (error) {
     console.error("❌ OpenAI Error:", error);
     return language === "RU"
