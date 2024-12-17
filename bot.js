@@ -1,9 +1,15 @@
-const OpenAI = require("openai");
+const { Configuration, OpenAIApi } = require("openai");
 const TelegramBot = require("node-telegram-bot-api");
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// OpenAI API Configuration
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
+// MongoDB Configuration
 const mongoUri = process.env.MONGO_URI;
 const client = new MongoClient(mongoUri);
 
@@ -99,7 +105,7 @@ async function generateResponse(prompt, userData, language) {
 
     const fullPrompt = `${context}\n\n${prompt}`;
 
-    const response = await openai.chat.completions.create({
+    const response = await openai.createChatCompletion({
       model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
@@ -108,9 +114,9 @@ async function generateResponse(prompt, userData, language) {
       temperature: 0.7,
     });
 
-    return response.choices[0].message.content;
+    return response.data.choices[0].message.content;
   } catch (error) {
-    console.error("❌ OpenAI Error:", error.message);
+    console.error("❌ OpenAI Error:", error);
     return language === "RU"
       ? "Произошла ошибка при генерации ответа."
       : "An error occurred while generating the response.";
