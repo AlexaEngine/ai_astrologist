@@ -9,16 +9,16 @@ const client = new MongoClient(mongoUri);
 
 let db;
 
-// Use the PORT declaration only once
-const PORT = process.env.PORT || 3000;
-const URL = process.env.BOT_URL;
-
 // Import Express
 const express = require("express");
 const bodyParser = require("body-parser");
 
 const app = express();
 app.use(bodyParser.json());
+
+// Use the PORT declaration only once
+const PORT = process.env.PORT || 3000; // Default to 3000 locally
+const URL = process.env.BOT_URL;
 
 // Initialize Telegram Bot with Webhook
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { webHook: true });
@@ -41,6 +41,7 @@ console.log("✅ Webhook URL:", `${URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`);
 // Heroku Endpoint to Process Webhooks
 app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   try {
+    console.log("🔍 Incoming Telegram Update:", JSON.stringify(req.body, null, 2)); // Log updates
     bot.processUpdate(req.body);
     res.sendStatus(200);
   } catch (error) {
