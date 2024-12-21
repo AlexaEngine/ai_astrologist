@@ -10,6 +10,7 @@ This repository contains the code for an Astrology Telegram Bot, utilizing Pytho
 - **Translation with Deep Translator**: Facilitates understanding by translating user queries and bot responses as needed, ensuring accessibility for a global audience.
 
 ## Requirements
+- NextJS and JavaScript
 - Python 3.8 or newer.
 - A Telegram Bot API token (obtainable through BotFather on Telegram).
 - An OpenAI API key (register at OpenAI's platform to get your key).
@@ -43,7 +44,7 @@ pip install -r requirements.txt
 
 4. **Run the Bot:**
    ```bash
-   python astrology_bot.py
+   node bot.js
    ```
 
 ## How It Works
