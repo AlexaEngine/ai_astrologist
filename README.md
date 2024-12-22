@@ -1,5 +1,7 @@
 # Astrology Telegram Bot
 
+#### Video Demo: https://youtu.be/zt7JyHBTwT8
+
 This repository contains the code for an Astrology Telegram Bot, utilizing Python, OpenAI's GPT-4 API, and the Telegram Bot API. The bot provides personalized astrological insights and enables interactions through natural language processing. It supports multiple languages and utilizes the deep_translator library to handle non-English queries.
 
 ## Features
