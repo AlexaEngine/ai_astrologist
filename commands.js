@@ -9,6 +9,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 async function saveUserData(db, userId, data) {
   try {
     await db.collection("users").updateOne({ userId }, { $set: { ...data } }, { upsert: true });
+    console.log(`✅ User data saved for userId: ${userId}`);
   } catch (error) {
     console.error("❌ Error saving user data:", error.message);
   }
@@ -16,7 +17,9 @@ async function saveUserData(db, userId, data) {
 
 async function getUserData(db, userId) {
   try {
-    return await db.collection("users").findOne({ userId });
+    const userData = await db.collection("users").findOne({ userId });
+    console.log(`ℹ️ Fetched user data for userId: ${userId}`, userData);
+    return userData;
   } catch (error) {
     console.error("❌ Error fetching user data:", error.message);
     return null;
@@ -34,35 +37,48 @@ async function generateResponse(prompt, userData, language) {
     : "No user details provided.";
 
   const fullPrompt = `${context}\n\n${prompt}`;
-  const response = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: fullPrompt },
-    ],
-    temperature: 1.0,
-  });
-  return response.choices[0]?.message?.content || "No response generated.";
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: fullPrompt },
+      ],
+      temperature: 1.0,
+    });
+    return response.choices[0]?.message?.content || "No response generated.";
+  } catch (error) {
+    console.error("❌ OpenAI API Error:", error.message);
+    return language === "RU"
+      ? "Произошла ошибка при генерации ответа. Пожалуйста, попробуйте позже."
+      : "An error occurred while generating a response. Please try again later.";
+  }
 }
 
 async function getTimezoneFromLocation(lat, lng) {
   const apiKey = process.env.GOOGLE_TIMEZONE_API_KEY;
   const timestamp = Math.floor(new Date().getTime() / 1000);
 
-  const response = await axios.get(
-    `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${apiKey}`
-  );
+  try {
+    const response = await axios.get(
+      `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${apiKey}`
+    );
 
-  if (response.data.status === "OK") {
-    return response.data.timeZoneId;
-  } else {
-    throw new Error("Invalid response from Timezone API");
+    if (response.data.status === "OK") {
+      return response.data.timeZoneId;
+    } else {
+      throw new Error("Invalid response from Timezone API");
+    }
+  } catch (error) {
+    console.error("❌ Error fetching timezone:", error.message);
+    throw error;
   }
 }
 
 // Command Handlers
 function handleCommands(bot, db) {
   bot.onText(/\/start/, (msg) => {
+    console.log("ℹ️ /start command received");
     bot.sendMessage(msg.chat.id, "Choose your language / Выберите язык:", {
       reply_markup: {
         inline_keyboard: [
@@ -74,6 +90,7 @@ function handleCommands(bot, db) {
   });
 
   bot.on("callback_query", async (query) => {
+    console.log("ℹ️ Callback query received:", query);
     const chatId = query.message.chat.id;
     const language = query.data === "LANG_RU" ? "RU" : "ENG";
     await saveUserData(db, chatId, { language });
@@ -86,6 +103,7 @@ function handleCommands(bot, db) {
   });
 
   bot.onText(/\/help/, async (msg) => {
+    console.log("ℹ️ /help command received");
     const userData = await getUserData(db, msg.chat.id);
     const language = userData?.language || "ENG";
     const helpText =
@@ -150,26 +168,28 @@ function handleCommands(bot, db) {
   });
 }
 
-function handleMessage(bot, msg, db) {
+// General Message Handler
+async function handleMessage(bot, msg, db) {
   const chatId = msg.chat.id;
 
   if (!msg.text || msg.text.startsWith("/")) return;
 
-  getUserData(db, chatId)
-    .then((userData) => {
-      const language = userData?.language || "ENG";
-      const timezone = userData?.timezone || "UTC";
-      const today = moment().tz(timezone).format("YYYY-MM-DD");
+  try {
+    const userData = await getUserData(db, chatId);
+    const language = userData?.language || "ENG";
+    const timezone = userData?.timezone || "UTC";
+    const today = moment().tz(timezone).format("YYYY-MM-DD");
 
-      const fullPrompt =
-        language === "RU"
-          ? `Вопрос пользователя: ${msg.text}. Сегодняшняя дата: ${today}.`
-          : `User's question: ${msg.text}. Today's date: ${today}.`;
+    const fullPrompt =
+      language === "RU"
+        ? `Вопрос пользователя: ${msg.text}. Сегодняшняя дата: ${today}.`
+        : `User's question: ${msg.text}. Today's date: ${today}.`;
 
-      return generateResponse(fullPrompt, userData, language);
-    })
-    .then((response) => bot.sendMessage(chatId, response))
-    .catch((error) => console.error("❌ Error handling message:", error.message));
+    const response = await generateResponse(fullPrompt, userData, language);
+    bot.sendMessage(chatId, response);
+  } catch (error) {
+    console.error("❌ Error handling message:", error.message);
+  }
 }
 
 module.exports = { handleCommands, handleMessage };

@@ -2,7 +2,7 @@ const { MongoClient } = require("mongodb");
 const TelegramBot = require("node-telegram-bot-api");
 const dotenv = require("dotenv");
 const { handleCommands, handleMessage } = require("./commands");
-const { initializeWebhook } = require("./webhook"); // Fixed the import
+const { initializeWebhook } = require("./index"); // Correctly import the webhook handler
 
 dotenv.config();
 
@@ -33,11 +33,16 @@ async function startBot() {
   console.log(`🤖 Bot is running in ${botMode} mode...`);
 
   if (botMode === "webhook") {
-    // Updated to use the correct function name
-    initializeWebhook(db); // Pass `db` to the webhook initialization
+    const webhookUrl = process.env.WEBHOOK_URL;
+    bot.setWebHook(webhookUrl)
+      .then(() => console.log(`✅ Webhook set to ${webhookUrl}`))
+      .catch((err) => console.error("❌ Failed to set webhook:", err.message));
+
+    const webhookHandler = initializeWebhook(db); // Get the webhook handler
+    return webhookHandler; // Return handler for external invocation
   } else {
-    handleCommands(bot, db);
-    bot.on("message", (msg) => handleMessage(bot, msg, db));
+    handleCommands(bot, db); // Register bot commands
+    bot.on("message", (msg) => handleMessage(bot, msg, db)); // Handle incoming messages
   }
 }
 
